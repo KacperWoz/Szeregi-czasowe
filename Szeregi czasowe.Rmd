@@ -1,0 +1,9 @@
+```{r}
+data<- cars
+library(dplyr)
+data %>% summarise(speed)
+new<-5
+old<-6
+old+new
+```
+
