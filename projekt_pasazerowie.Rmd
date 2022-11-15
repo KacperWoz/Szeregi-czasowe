@@ -1,0 +1,47 @@
+---
+title: "projekt - cena złota"
+author: "Julia Komorowska"
+date: "10 11 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(TSA) # nw czy go używamy
+data<-read.csv("/Users/julka/Desktop/SZEREGI CZASOWE I MODELE PREDYKCYJNE/pasazerowie.csv")
+```
+
+```{r}
+passengers<-ts(data,start = 2005, frequency = 12)
+plot(passengers,main="Wykres liczby pasażerów")
+```
+```{r}
+str(passengers) #też dodałam for fun
+```
+```{r}
+n<-length(passengers) #liczba danych
+start(passengers) #początek danych
+end(passengers) #koniec danych
+frequency(passengers) #częstotliwość
+```
+```{r}
+t<-time(passengers) #nw po chuj to, ale na razie dodaje wszystko co na zajęciach
+t[1:5]
+```
+```{r}
+dput(passengers) #zapis w ASCII, też nie wiem po chuj
+```
+```{r}
+dec_passengers<-decompose(passengers)
+plot(dec_passengers)
+```
+```{r}
+plot(dec_passengers$trend,ylim=c(0,10000000))
+lw<-lowess(passengers) #wygładzenie liniowe oparte na metodzie najmniejszych kwadratów
+lines(lw,type='l',col=6)
+```
+
