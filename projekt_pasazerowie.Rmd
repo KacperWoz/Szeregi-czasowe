@@ -7,12 +7,32 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+fSeason<-function(x,s){    #średnia z x w okresie s
+  n<-length(x); N<-floor(n/s)
+  d<-frequency(x)
+  ww<-rep(0,s)    #do liczenia średnich - na początek "0"
+  for(k in 1:s){
+    div = N
+    for(j in 0:(N-1)){
+      ww[k] <- ww[k]+x[k+j*s]
+    }
+    if (k+N*s<=n){                #jeszcze 1 składnik "na końcu"
+      div = N+1
+      ww[k] <- ww[k]+x[k+N*s]
+    }
+    ww[k] <- ww[k]/div
+  }
+  ss <- ww-mean(ww)   #to jest 1 sezon, usuwamy średnią (stałą)
+  for(k in (s+1):n) 
+    ss[k]=ss[k-s]
+  xs<-ts(ss, start=start(x), frequency=d)
+}
 ```
 
 ```{r}
 library(dplyr)
 library(TSA) # nw czy go używamy
-data<-read.csv("/Users/julka/Desktop/SZEREGI CZASOWE I MODELE PREDYKCYJNE/pasazerowie.csv")
+data<-read.csv("pasazerowie.csv")
 ```
 
 ```{r}
@@ -43,5 +63,138 @@ plot(dec_passengers)
 plot(dec_passengers$trend,ylim=c(0,10000000))
 lw<-lowess(passengers) #wygładzenie liniowe oparte na metodzie najmniejszych kwadratów
 lines(lw,type='l',col=6)
+```
+
+```{r}
+
+y<- ts(data[-c(183:210),],start = 2005, frequency = 12)
+ 
+plot(y,main="Pasarzerowie - regresja")   
+            #budowa macierzy objaśniającej X
+x<-time(y)
+lw<-lowess(y)
+lw<-ts(lw$y,start=start(y),frequency = frequency(y))
+lines(lw,col=1)
+te<-2020+c(-1:12)/12
+xe<-unlist(list(x,x[length(x)]+c(1:12)/frequency(x)))
+xe<-ts(xe,start=start(y),frequency = frequency(y))
+X <- matrix(x)                   # trend st. 1 - dane
+lc<- lsfit(X,y)$coefficients     # numeracja parametrów - poniżej
+
+yr1 <- lc[1]+ lc[2]*x            # trend st. 1 jako funkcja i szereg czasowy
+#lines(yr1,col=1)                 # wykres szary
+
+#t2 <- t^2                        # druga kolumna - trochę duże liczby, a zatem
+x2 <- (x-2013)^2                 # dołączamy do X drugą kolumnę
+X <- cbind(X,x2)                 # trend st. 2 - dołączenie kolumny danych
+lc<- lsfit(X,y)$coefficients
+
+yr2 <- lc[1]+ lc[2]*x + lc[3]*(x2) #trend st. 2 jako funkcja
+ye2<-lc[1]+ lc[2]*te + lc[3]*(te-2013)^2
+lines(yr2,col=2)
+lines(te,ye2)#itd.
+
+x3 <- (x-2013)^3                 # dołączamy do X trzecia kolumnę
+X <- cbind(X,x3)                 # trend st. 3 - dołączenie kolumny danych
+lc<- lsfit(X,y)$coefficients
+
+ye3<-lc[1]+ lc[2]*te + lc[3]*(te-2013)^2+lc[4]*(te-2013)^3
+yr3 <- lc[1]+ lc[2]*x + lc[3]*x2 + lc[4]*x3 #trend st. 3 jako funkcja
+lines(yr3,col=3)
+lines(te,ye3)#itd.
+
+x4 <- (x-2013)^4                 # dołączamy do X czwarta kolumnę
+X <- cbind(X,x4)                 # trend st. 4 - dołączenie kolumny danych
+lc<- lsfit(X,y)$coefficients
+
+ye4<-lc[1]+ lc[2]*te + lc[3]*(te-2013)^2+lc[4]*(te-2013)^3+ lc[5]*(te-2013)^4
+yr4 <- lc[1]+ lc[2]*x + lc[3]*x2+ lc[4]*x3 + lc[5]*x4 #trend st. 4 jako funkcja
+lines(yr4,col=4) #itd.
+lines(te,ye4)
+
+
+
+#z lowess
+
+plot(lw,col=1)
+lc<- lsfit(X,lw)$coefficients
+
+yrl2 <- lc[1]+ lc[2]*x + lc[3]*(x2) #regresja dla lowess st. 2
+lines(yrl2,col=2) #itd.
+
+lc<- lsfit(X,lw)$coefficients
+
+yrl3 <- lc[1]+ lc[2]*x + lc[3]*x2 + lc[4]*x3 #regresja dla lowess st. 3
+lines(yrl3,col=3) #itd.
+
+lc<- lsfit(X,lw)$coefficients
+
+yrl4 <- lc[1]+ lc[2]*x + lc[3]*x2+ lc[4]*x3 + lc[5]*x4 #trend st. 4 jako funkcja
+lines(yrl4,col=4) #itd.
+```
+```{r}
+plot(lw,col=1,main="Porównanie z trendem lowess()")
+lines(yr2,col=2)
+lines(yr3,col=3)
+lines(yr4,col=4)
+```
+```{r}
+plot(y)
+lines(yrl4,col=4)
+
+y_bezT4 <-y-yrl4  
+plot(y_bezT4)
+yS<-fSeason(y_bezT4,12)    
+lines(yS,col=3)
+
+res_T4<-y_bezT4-yS
+plot(res_T4)
+
+std4<-var(res_T4[15:182])^.5
+abline(h=2*std4,col=7)
+abline(h=2*-std4,col=7)
+```
+```{r}
+y_bezS<-y-yS
+plot(y_bezS,main="Dane bez sezonowości")
+lines(lowess(y_bezS),col=4)
+lines(lowess(y),col=2)
+```
+```{r}
+#install.packages('forecast')
+
+library(forecast)
+mymodel <- auto.arima(y)
+
+mymodel
+```
+
+```{r}
+plot.ts(mymodel$residuals)
+
+myforecast <- forecast(mymodel, h=3*12)
+
+plot(myforecast)
+```
+```{r}
+myforecast1 <- forecast(y, h=3*12)
+
+plot(myforecast1)
+```
+
+
+
+```{r}
+yel4<-lc[1]+ lc[2]*xe + lc[3]*(xe-2013)^2+ lc[4]*(xe-2013)^3 + lc[5]*(xe-2013)^4 
+
+sez<-as.matrix(yS)
+sez[182:194]<-sez[1:12]
+ypred<-yel4+sez
+
+plot(y,col=2,main="Prognoza z trendem stopnia 4", xlim=c(2005,2022),lwd=2)
+lines(ypred)
+lines(yel4,col=5)
+#lines(passengers,col=3)
+#dodać szum  z wykładu
 ```
 
